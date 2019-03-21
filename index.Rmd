@@ -158,7 +158,7 @@ d2 %>%
 -----------------------------------------------------------------------
 # Visual 1 {.storyboard} 
 
-### First iteration
+### Iteration 1
 
 ```{r earlyVersion}
 # This was a version I originally created for a presentation to my doctoral seminar
@@ -183,7 +183,7 @@ This visual was designed for an academic audience. My goal with this version was
 
 
 
-### Version Submitted for Peer Review
+### Iteration 2
 
 ```{r timeRsa}
 
@@ -210,7 +210,7 @@ p1
 After receiving feedback from the course instructor, I changed the geom_point to geom_line to better characterize individual children's trajectories.I think that this change adds to the data transparency relative to the geom_points. Additionally, I tried to create more clarity on the x-axis by using the specific task names as labels and by rotating the labels so they were readable. Finally, I changed the color of the quadratic slope so that it was color blind friendly. This is the version I submitted for peer review. At the time, I felt that the x-axis still increased the cognitive load. I also wasn't sure that the facet labels (i.e., "3" and "4" and so on) were clear to the reader. I asked my peers for specific feedback on these points, and they all gave helpful solutations. I was able to address some of the concerns in the following iteration. 
 
 
-### Final Visualization 1
+### Final Iteration
 
 ```{r finalViz3}
 d2 %>% 
