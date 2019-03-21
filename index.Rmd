@@ -1,9 +1,12 @@
 ---
-title: "Maria Schweer-Collins' Comprehensive Exam Paper"
+title: "Maria Schweer-Collins EDLD610 Final Project"
 output: 
   flexdashboard::flex_dashboard:
     orientation: columns
     vertical_layout: fill
+    storyboard: true
+    theme: flatly
+
 ---
 
 ```{r setup, include=FALSE}
@@ -12,18 +15,34 @@ library(ggplot2)
 library(tidyverse)
 library(here)
 library(rio)
-d2 <- import(here("data", "CAPSL.sav"))
+library(purrr) 
+library(colorblindr)
+library(forcats)
+library(plotly)
+library(gganimate)
+library(ggthemes)
+library(extrafont)
+
+# load data
+
+d2 <- import(here("data", "synData.csv"))
 ```
 
+```{r synthpop, eval = FALSE, echo = FALSE}
+# Providing example code for how I created a simulated dataset to share my data publicly
+dsub <- d[, c(1, 2:21, 23, 27, 28)] # select data from original datafile "d"
+syn1 <- syn(dsub) # create synthetic dataset based on original data
+compare(syn1, dsub) # compare distributions from real and synthetic data
+write.syn(syn1, filename = "synthData", filetype = "csv") # write and export synthetic data to csv 
 
-# Page 1 {data-icons="fa-child"}
+```
 
-Column {data-width=650}
+# Final Portfolio {data-icon="fa-chart-line"}
+
+Column {data-width=550}
 -----------------------------------------------------------------------
 
-### RSA Trajectories by Child Age
-
-
+### Viz 1: Learning to Visualize Multilevel Growth Modeling
 
 
 
@@ -45,7 +64,8 @@ d2 %>%
   theme_minimal(base_size = 10) +
   scale_x_continuous(name = "Condition",
                      labels = c("Resting", "WJ-AP", "WJ-PV", "Recovery")) +
-  labs(x = "Condition") +
+  labs(x = "Condition",
+       title = "Quadratic Trajectories of RSA by Child Age") +
   theme(axis.text.x = element_text(angle = 45, hjust = 1),
         panel.spacing = unit(1, "lines"), # increasing space between facets
         panel.grid.minor = element_blank(),
@@ -56,18 +76,446 @@ d2 %>%
 
 
 
-Column {data-width=350}
+Column {data-width=450}
 -----------------------------------------------------------------------
 
-### Chart B
+### Viz 2: Sample Wide Changes in Child RSA
 
-```{r}
+```{r plot2Final, echo=FALSE, fig.width=6, fig.height=4}
+# preparing data for visualization
+# first use boostrapping to model variability 
+row_samps <- rerun(100,
+      sample(seq_len(nrow(d2)), 
+             nrow(d2), 
+             replace = TRUE))
+
+
+# extract samples 
+d_samps <- map_df(row_samps, ~d2[., ], .id = "sample")
+
+#plot 2 final
+ani_plot2 <- d2 %>% 
+  filter(!is.na(RSA)) %>%
+  ggplot(aes(Time, RSA)) +
+  geom_jitter(alpha = 0.3,
+              size = 2,
+              width = 0.1) +  
+  stat_smooth(data = filter(d_samps, sample <= 20),
+              geom = "line",
+              color = "#4375D3",
+              fullrange = TRUE,
+              size = 1, 
+              alpha = 0.5) +
+  scale_y_continuous(limits =c(0, 10), 
+                     breaks= seq(0, 10, by = 1)) +
+  scale_x_continuous(name = "Condition",
+                     labels = c("Resting", "Math", "Language", "Recovery")) +
+  labs(title =  "Changes in Child RSA by Task Condition") +
+  theme_minimal(base_size = 17) +
+  theme(panel.grid.minor = element_blank(),
+        plot.title = element_text(face = "bold", size = 16)) +
+  geom_smooth(color = "magenta") +
+  stat_smooth(aes(group = sample),
+              data = d_samps,
+              geom = "line",
+              color = "#4375D3",
+              fullrange = TRUE,
+              size = 0.1, 
+              alpha = .1)
+ani_plot2
 
 ```
 
-### Chart C
+### Viz 3: Describing Level of Risk in a Population of Clients to Clinicians
 
-```{r}
+```{r, echo=FALSE}
+d2 %>% 
+  mutate(Gender = factor(TCgender, levels = c(1, 2),
+                         labels = c("boy", "girl")),
+         Age = factor(W1TCAGEY, levels = c(3, 4, 5, 6, 7),
+                           labels = c("Age 3", "Age 4", "Age 5", "Age 6", "Age 7")),
+         Category = dplyr::case_when(
+           PEXCTOT1 >= 4 ~ "High",
+           PEXCTOT1 <= 1 ~ "Low",
+           TRUE ~ "NA"
+         )) %>% 
+  filter(Category != "NA") %>% 
+    ggplot(aes(factor(Category, levels = c("Low", "High")))) + 
+      geom_bar(aes(fill = Gender), position = "dodge", alpha = 0.7) +
+      facet_wrap(~Age, nrow = 5) +
+      coord_flip() +
+      scale_fill_OkabeIto() +
+      labs(title = "ACE Exposure in Children by Age and Gender",
+           x = "Level of Adverse Childhood Experiences (ACEs)",
+           y = "Number of Children",
+           fill = "Gender") +
+      theme_economist(base_size = 9.5)
+
 
 ```
+
+
+-----------------------------------------------------------------------
+# Visual 1 {.storyboard} 
+
+### First iteration
+
+```{r earlyVersion}
+# This was a version I originally created for a presentation to my doctoral seminar
+p <- ggplot(data = d2, aes(x = Time, y = RSA)) +
+    geom_point(aes(group = id), 
+                color = "gray70") +
+    geom_smooth(method = "lm", 
+                formula = y ~ x + I(x^2), size = 1, se = FALSE, color = "blue") + 
+    facet_wrap(~W1TCAGEY, nrow = 1) +
+    labs(title ="RSA Quadratic Trajectories by Child Age",
+         x = "Condition",
+         caption = "WJ-AP = Woodcock Johnson Applied Problems; WJ-PV = Picture Vocabulary; RSA = Respiratory Sinus Arrhythmia") +
+    scale_x_continuous(name = "Condition",
+                      limits = c(0, 3))+ 
+    theme(axis.text.x = element_text( hjust = 1))
+p
+```
+
+***
+**Academic Audience**  
+This visual was designed for an academic audience. My goal with this version was to develop a data visualization that accurately portrayed my raw data, while also explaining the results of my multilevel growth model, which showed significant quadratic change in children's physiology across several learning tasks. Given that child age was a significant cross-level moderator of these trajectories, I decided to use faceting to display group differences. 
+
+
+
+### Version Submitted for Peer Review
+
+```{r timeRsa}
+
+p1 <- ggplot(data = d2, aes(x = Time, y = RSA)) +
+    geom_line(aes(group = id), color = "gray70") +
+    geom_smooth(method = "lm", 
+                formula = y ~ x + I(x^2), 
+                size = 1, se = FALSE, 
+                color = "#20A387FF") + 
+    facet_wrap(~W1TCAGEY, nrow = 1) +
+    labs(title ="Quadratic Trajectories of RSA by Child Age",
+         x = "Condition",
+         caption = "WJ-AP = Woodcock Johnson Applied Problems; WJ-PV = Picture Vocabulary; 
+                    RSA = Respiratory Sinus Arrhythmia") +
+    scale_x_continuous(name = "Condition",
+                       limits = c(0, 3),
+                       labels = c("Resting", "WJ-AP", "WJ-PV", "Recovery")) + 
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+p1
+
+```
+
+***
+After receiving feedback from the course instructor, I changed the geom_point to geom_line to better characterize individual children's trajectories.I think that this change adds to the data transparency relative to the geom_points. Additionally, I tried to create more clarity on the x-axis by using the specific task names as labels and by rotating the labels so they were readable. Finally, I changed the color of the quadratic slope so that it was color blind friendly. This is the version I submitted for peer review. At the time, I felt that the x-axis still increased the cognitive load. I also wasn't sure that the facet labels (i.e., "3" and "4" and so on) were clear to the reader. I asked my peers for specific feedback on these points, and they all gave helpful solutations. I was able to address some of the concerns in the following iteration. 
+
+
+### Final Visualization 1
+
+```{r finalViz3}
+d2 %>% 
+  filter(!is.na(RSA)) %>%
+  mutate(Age = factor(W1TCAGEY, levels = c(3, 4, 5, 6, 7),
+                           labels = c("Age 3", "Age 4", "Age 5", "Age 6", "Age 7"))) %>% 
+  # make age variable as factor with according labels
+  ggplot(aes(x = Time, y = RSA)) +
+  geom_line(aes(group = id),
+            color = "gray70") +
+  geom_smooth(method = "lm",
+              formula = y ~ x + I(x^2),
+              size = 1.5,
+              se = FALSE,
+              color = "#20A387FF") +
+  facet_wrap(~Age,nrow = 1) +
+  theme_minimal(base_size = 10) +
+  scale_x_continuous(name = "Condition",
+                     labels = c("Resting", "WJ-AP", "WJ-PV", "Recovery")) +
+  labs(x = "Condition",
+       title = "Quadratic Trajectories of RSA by Child Age") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        panel.spacing = unit(1, "lines"), # increasing space between facets
+        panel.grid.minor = element_blank(),
+        plot.title = element_text(face = "bold")) # bold the title}
+```
+
+***
+This is my final iteration of my first visualization following the peer review. The primary changes were to bold the title, to distinguish it from the other axis labels and facet labels. Additionally, the facet labels are now more clear (i.e., "Age 3") so that readers can quickly idenitfy the different groups. Things I am still pondering -- how best to show changes with piecewise growth modeling and further ways to reduce cognitive load on the x-axis.  
+
+
+-----------------------------------------------------------------------
+# Visual 2 {.storyboard}
+
+### Iteration 1
+
+```{r first2, echo = FALSE}
+#transform time to numeric 
+d2 <- d2 %>%
+  mutate(Time = as.numeric(Time))
+
+#first iteration
+d2 %>%
+  ggplot(aes(Time, RSA)) +
+  geom_point() +
+  geom_smooth() +
+  scale_y_continuous(limits =c(0,10 ), breaks= seq(0, 10, by = 1)) +
+  ggtitle( "Changes in Child RSA by Task Condition")
+```
+
+***
+**Academic or Student Audience**  
+This visualization was originally developed to convey the benefits of growth modeling to an academic or student audience. The idea was to develop a visualization that could convey uncertainty in mean levels of change. Thus, this was the first phase in working toward an animated visualization that would show the potential population deviations around the mean growth curve in the entire sample, based on bootstrapping. 
+
+
+### Iteration 2 
+
+```{r peerReview2, echo=FALSE}
+#second iteration
+#added jitter to points 
+#first iteration
+plot <-ggplot(d2, aes(Time, RSA)) +
+  geom_point(position = "jitter") +
+  geom_smooth() +
+  scale_y_continuous(limits =c(0,10 ), breaks= seq(0, 10, by = 1)) +
+  ggtitle( "Changes in Child RSA by Task Condition")
+plot
+
+```
+
+***
+This is my second iteration where I played with using jittered points to better display the variabilty in children's trajectories of RSA. To me, the jittering created confusion because the data points within each task ran together. 
+
+
+### Iteration 3
+
+```{r final2}
+#third iteration
+#add tranparency to show overlapping points and removed jittering
+
+third <-ggplot(d2,aes(Time, RSA)) +
+  geom_point(alpha = 0.3) + 
+  geom_smooth() +
+  scale_y_continuous(limits =c(0,10 ), breaks= seq(0, 10, by = 1)) +
+  ggtitle( "Changes in Child RSA by Task Condition")
+third
+
+```
+
+***
+So in this iteration, I went back to unjittered points and instead tried using transparency to more clearly show the data. While this wasn't a perfect fit, I thought it worked better than the previous iteration. Thus, I moved forward to creating bootstrapped samples to show potential variability in the larger population, outside of the observed data from this sample of 114 children. 
+
+
+### Iteration 4
+
+```{r final4, echo=FALSE}
+#first use boostrapping to model variability 
+row_samps <- rerun(100,
+      sample(seq_len(nrow(d2)), 
+             nrow(d2), 
+             replace = TRUE))
+
+
+#extract samples 
+d_samps <- map_df(row_samps, ~d2[., ], .id = "sample")
+
+#plotting both bootstrapped data
+boots <- ggplot(d2, aes(Time, RSA)) +
+  geom_point(alpha = 0.3) +
+  stat_smooth(aes(group = sample),
+              data = d_samps,
+              geom = "line",
+              color = "#4375D3",
+              fullrange = TRUE,
+              size = 0.1)
+boots
+```
+
+***
+Here I plot multiple trajectory lines from the 100 bootstrapped samples. 
+
+### Iteration 5
+
+```{r final5}
+
+
+#verify bootstrapped sample and raw data match 
+both <- ggplot(d2, aes(Time, RSA)) +
+  geom_point(alpha = 0.3) +
+  geom_smooth(color = "magenta") +
+  stat_smooth(aes(group = sample),
+              data = d_samps,
+              geom = "line",
+              color = "#4375D3",
+              fullrange = TRUE,
+              size = 0.1, 
+              alpha = .1) +
+  labs(title = "Changes in Child RSA by Task Condition",
+       x = "Condition") +
+  theme(plot.title = element_text(face = "bold", size = 16))
+both
+```
+
+***
+Finally, with help from course slides, I also plot the geom_smooth line from the sample data to verify how it aligns with the bootstrapped samples. This is the place at which I asked for peer review help. I struggled to get the animation to work. While I was able to figure out how to get the animation to work, I was not able to get it to work in this rmarkdown document. Thus, I will not be sharing it here. However, I will note that my peer reviewers were the ones who helped me figure out the animation -- so a big plug for working in a team.  
+
+
+### Final Iteration
+
+```{r animationFinal}
+ani_plot2 <- d2 %>% 
+  filter(!is.na(RSA)) %>%
+  ggplot(aes(Time, RSA)) +
+  geom_jitter(alpha = 0.3,
+              size = 2,
+              width = 0.1) +  # change to small jitter width 
+  stat_smooth(data = filter(d_samps, sample <= 20),
+              geom = "line",
+              color = "#4375D3",
+              fullrange = TRUE,
+              size = 1, 
+              alpha = 0.5) +
+  scale_y_continuous(limits =c(0, 10), 
+                     breaks= seq(0, 10, by = 1)) +
+  scale_x_continuous(name = "Condition",
+                     labels = c("Resting", "Math", "Language", "Recovery")) +
+  labs(title =  "Changes in Child RSA by Task Condition") +
+  theme_minimal(base_size = 17) +
+  theme(panel.grid.minor = element_blank(),
+        plot.title = element_text(face = "bold", size = 16)) +
+  geom_smooth(color = "magenta") +
+  stat_smooth(aes(group = sample),
+              data = d_samps,
+              geom = "line",
+              color = "#4375D3",
+              fullrange = TRUE,
+              size = 0.1, 
+              alpha = .1)
+ani_plot2
+
+```
+
+***
+This is my final iteration. While this plot is not ultimately animated, it does convey the uncertainty of the mean trajectory within a potential larger population. I also changed that x-axis labels to show the specific type of task. I increase the base_size to make the titles and labels more easy to read. Also, with the help my a peer-reviewer I figured out how to jitter the points so that they still showed up within each specific task. If I were to build on this for teaching purposes, I might create the same type of plot for different subgroups within the data. Also, I am thinking about how to show model random effects for growth parameters through animation. 
+
+
+
+-----------------------------------------------------------------------
+# Visual 3 {.storyboard}
+
+### Iteration 1
+```{r}
+# mutate gender to a factor
+d2 <- d2 %>%
+  mutate(TCgender = as.factor(TCgender)) 
+
+# creating categorical variable based on Adverse Childhood Life Experiences. I am taking a continuous measure that ranges 0 - 10 and grouping it into "low", "medium", and "high."
+
+d2$category <- cut(d2$PEXCTOT1, 
+                   breaks=c(-Inf, 1, 4, Inf), 
+                   labels=c("Low","Middle","High"))
+
+# removing NAs from ACE exposure variable 
+d2 <- d2 %>%
+  filter(category != "na")
+
+
+# plotting data
+viz3 <- ggplot(d2, aes(category)) + 
+  geom_bar(aes(fill = TCgender), position = "dodge") +
+  facet_wrap(~W1TCAGEY, nrow = 5) +
+  coord_flip() +
+  scale_fill_OkabeIto() +
+  theme_minimal() +
+  labs(title = "ACE Exposure in Children by Age and Gender",
+       x = "Level of Adverse Childhood Experiences (ACEs)",
+       y = "Number of Children")
+  
+viz3  
+  
+```
+
+***
+**Audience of Community Based Clinicians**  
+For this final example, I tried to create visualization that would help a hypothetical group of community-based clinicians better understand the level of risk in their child client population. While children could have experienced 1-10 adverse childhood experiences, I decided to make the data more accessible, using groups of Aces that have been shown to relate differentially to poorer child outcomes (i.e., 0-1 ACEs being lower risk versus 4 or more ACEs being much higher risk).  
+
+### Iteration 2
+```{r addTransparency}
+# putting some transparency in bars with alpha; 
+viz3 <- ggplot(d2, aes(category)) + 
+  geom_bar(aes(fill = TCgender), position = "dodge", alpha = 0.7) +
+  facet_wrap(~W1TCAGEY, nrow = 5) +
+  coord_flip() +
+  scale_fill_OkabeIto() +
+  theme_minimal() +
+  labs(title = "ACE Exposure in Children by Age and Gender",
+       x = "Level of Adverse Childhood Experiences (ACEs)",
+       y = "Number of Children",
+       fill = "Gender") # 1 = boy, 2 = girl
+  
+viz3 
+```
+
+***
+This is the iteration I shared with me peers. Essentially, I added transparency to the bars to make the visual more appealing. I also updated the Gender label for clarity. 
+
+
+### Iteration 3
+```{r visual3Final}
+d2 %>% 
+  mutate(Gender = factor(TCgender, levels = c(1, 2),
+                         labels = c("boy", "girl")),
+         Age = factor(W1TCAGEY, levels = c(3, 4, 5, 6, 7),
+                           labels = c("Age 3", "Age 4", "Age 5", "Age 6", "Age 7")),
+         Category = dplyr::case_when(
+           PEXCTOT1 >= 4 ~ "High",
+           PEXCTOT1 > 1 & PEXCTOT1 < 4 ~ "Middle",
+           PEXCTOT1 <= 1 ~ "Low",
+           TRUE ~ "NA"
+         )) %>% 
+  filter(Category != "NA") %>% 
+    ggplot(aes(factor(Category, levels = c("Low", "Middle", "High")))) + 
+      geom_bar(aes(fill = Gender), position = "dodge", alpha = 0.7) +
+      facet_wrap(~Age, nrow = 5) +
+      coord_flip() +
+      scale_fill_OkabeIto() +
+      theme_minimal(base_size = 14) +
+      labs(title = "ACE Exposure in Children by Age and Gender",
+           x = "Level of Adverse Childhood Experiences (ACEs)",
+           y = "Number of Children",
+           fill = "Gender") 
+```
+
+***
+Following peer review, I got helpful feedback about again listing that my facets were child age. I also increased the base size to make the axis and title labels easier to read. 
+
+### Final Iteration
+
+```{r final3NOmiddle, echo = FALSE}
+d2 %>% 
+  mutate(Gender = factor(TCgender, levels = c(1, 2),
+                         labels = c("boy", "girl")),
+         Age = factor(W1TCAGEY, levels = c(3, 4, 5, 6, 7),
+                           labels = c("Age 3", "Age 4", "Age 5", "Age 6", "Age 7")),
+         Category = dplyr::case_when(
+           PEXCTOT1 >= 4 ~ "High",
+           PEXCTOT1 <= 1 ~ "Low",
+           TRUE ~ "NA"
+         )) %>% 
+  filter(Category != "NA") %>% 
+    ggplot(aes(factor(Category, levels = c("Low", "High")))) + 
+      geom_bar(aes(fill = Gender), position = "dodge", alpha = 0.7) +
+      facet_wrap(~Age, nrow = 5) +
+      coord_flip() +
+      scale_fill_OkabeIto() +
+      labs(title = "ACE Exposure in Children by Age and Gender",
+           x = "Level of Adverse Childhood Experiences (ACEs)",
+           y = "Number of Children",
+           fill = "Gender") +
+      theme_economist(base_size = 9.5)
+
+```
+
+***
+In this final version, I ultimately decided to remove the "medium" ACEs category. This decision was made as I was considering my audience. In essence, I wanted clinicians to be able to see how many higher risk kids are in the clinic versus lower risk. I think this makes the visual comparison easier within each age group, thus reducing cognitive load. I decided to use the economist theme to change the background and the formatting for visual appeal. Additional things I would like to change include the font (struggled to override the theme), adding in a child-themed visual (i.e., crayons, stick figures, etc.), and potentially going into the inDesign program to add the ACE questions alongside the visual so that clinicians could see the potenital sources of adversity that children experienced. 
+
+
 
